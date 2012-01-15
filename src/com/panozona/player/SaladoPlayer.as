@@ -95,7 +95,9 @@ package com.panozona.player {
 			try {
 				xmlLoader.addEventListener(IOErrorEvent.IO_ERROR, configurationLost);
 				xmlLoader.addEventListener(Event.COMPLETE, configurationLoaded);
-				xmlLoader.load(new URLRequest(loaderInfo.parameters.xml ? loaderInfo.parameters.xml + "?v=" + (new Date().getTime()) : "settings.xml?v=" + (new Date().getTime())));
+				var queryString:String = loaderInfo.parameters.queryString;
+				var settingsFileName:String = loaderInfo.parameters.xml ? loaderInfo.parameters.xml + "?" + (queryString ? queryString + "&" : "") + "v=" + (new Date().getTime()) : "settings.xml?v=" + (new Date().getTime());
+				xmlLoader.load(new URLRequest(settingsFileName));
 			}catch (error:Error) {
 				addChild(traceWindow);
 				traceWindow.printError("Could not load configuration, security error: " + error.message);
