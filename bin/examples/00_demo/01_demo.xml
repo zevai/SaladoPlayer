@@ -46,6 +46,12 @@
 		</panorama>
 	</panoramas>
 	<modules>
+        <LensFlare path="~modules/LensFlare-0.1-dev.swf" >
+            <settings maxDistance="10" maxBrightness="150"/>
+            <panoramas>
+                <panorama id="park" pan="-21.68" tilt="8.89"/>
+            </panoramas>
+        </LensFlare>	
 		<InfoBubble path="~modules/InfoBubble-1.3.swf">
 			<bubbles>
 				<text id="b_drag" text="change navigation style" style="buttonBar" angle="1"/>
