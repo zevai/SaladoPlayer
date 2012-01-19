@@ -20,8 +20,9 @@ package com.panozona.modules.lensflare.model{
 	
 	public class Settings {
 		
-		public var maxDistance:Number = 20;
-		public var maxBrightness:Number = 200;
+		public var maxFlaresDistance:Number = 30;
+		public var maxBrightnessDistance:Number = 20;
+		public var maxBrightness:Number = 150;
 		
 	}
 }

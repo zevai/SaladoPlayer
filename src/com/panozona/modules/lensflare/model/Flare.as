@@ -18,11 +18,14 @@ along with SaladoPlayer. If not, see <http://www.gnu.org/licenses/>.
 */
 package com.panozona.modules.lensflare.model {
 	
-	public class Panorama {
+	import flash.display.Sprite;
+	
+	public class Flare {
 		
-		public var pan:Number = 0;		
-		public var tilt:Number = 0;
-		public var id:String = null;
+		public var path:String = null;		
+		public var pos:Number = 1; // 1 - screen center, 0 - point of brightness
+		
+		public var image:Sprite = new Sprite();
 		
 	}
 }

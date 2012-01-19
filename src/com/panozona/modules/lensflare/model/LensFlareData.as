@@ -27,6 +27,7 @@ package com.panozona.modules.lensflare.model{
 		
 		public var settings:Settings = new Settings();
 		public var panoramas:Panoramas = new Panoramas();
+		public var flares:Flares = new Flares();
 		
 		public function LensFlareData(moduleData:ModuleData, saladoPlayer:Object){
 			
@@ -37,6 +38,8 @@ package com.panozona.modules.lensflare.model{
 					translator.dataNodeToObject(dataNode, settings);
 				}else if (dataNode.name == "panoramas") {
 					translator.dataNodeToObject(dataNode, panoramas);
+				}else if (dataNode.name == "flares") {
+					translator.dataNodeToObject(dataNode, flares);
 				}else {
 					throw new Error("Invalid node name: " + dataNode.name);
 				}
@@ -45,12 +48,18 @@ package com.panozona.modules.lensflare.model{
 			if (saladoPlayer.managerData.debugMode) {
 				if (panoramas.getChildrenOfGivenClass(Panorama).length == 0) {
 					throw new Error("No panoramas found.");
-				}
+				}			
 				
 				for each(var panorama:Panorama in panoramas.getChildrenOfGivenClass(Panorama)) {
 					if ((!panorama.id)) {
 						throw new Error("Panorama id is not defined.");
 					}
+				}
+				
+				for each(var flare:Flare in flares.getChildrenOfGivenClass(Flare)) {
+					if (((flare as Flare).path == null || !(flare as Flare).path.match(/^(.+)\.(png|gif|jpg|jpeg|swf)$/i))) {
+						throw new Error("Invalid image path: " + (flare as Flare).path);
+					}					
 				}				
 			}
 		}

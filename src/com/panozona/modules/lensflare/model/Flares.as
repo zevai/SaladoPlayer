@@ -18,11 +18,14 @@ along with SaladoPlayer. If not, see <http://www.gnu.org/licenses/>.
 */
 package com.panozona.modules.lensflare.model {
 	
-	public class Panorama {
+	import com.panozona.player.module.data.structure.DataParent;
+	
+	public class Flares extends DataParent{
 		
-		public var pan:Number = 0;		
-		public var tilt:Number = 0;
-		public var id:String = null;
-		
+		override public function getChildrenTypes():Vector.<Class>{
+			var result:Vector.<Class> = new Vector.<Class>();
+			result.push(Flare);
+			return result;
+		}
 	}
 }

@@ -125,9 +125,11 @@ package com.panozona.modules.viewfinder{
 		}
 		
 		private var verticalFieldOfView:Number
+		
 		private function getCursorTilt():Number {
 			verticalFieldOfView = __toDegrees * 2 * Math.atan((saladoPlayer.manager.boundsHeight / saladoPlayer.manager.boundsWidth)
 				* Math.tan(__toRadians * 0.5 * saladoPlayer.manager.fieldOfView));
+				
 			return validatePanTilt( saladoPlayer.manager._tilt -
 				Math.atan(( saladoPlayer.manager.mouseY - saladoPlayer.manager.boundsHeight * 0.5)
 				* Math.tan(verticalFieldOfView * 0.5 * __toRadians) / (saladoPlayer.manager.boundsHeight * 0.5)) * __toDegrees);
