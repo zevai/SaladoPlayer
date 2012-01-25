@@ -51,7 +51,7 @@ package com.panosalado.model {
 		
 		public var maxPixelZoom:Number = 1.0;
 		
-		public function Params( path:String, pan:Number = NaN, tilt:Number = NaN, fov:Number = NaN) {
+		public function Params( path:String, pan:Number = 0, tilt:Number = 0, fov:Number = 90) {
 			this.path = path;
 			this.pan = pan;
 			this.tilt = tilt;
