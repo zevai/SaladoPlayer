@@ -153,8 +153,13 @@ package com.panozona.modules.lensflare{
 		
 		private function lensFlareEffect(pan:Number, tilt:Number):void {
 			
-			var fDistance:Number = Math.sqrt(Math.pow(Math.abs(pan) - fPan, 2) + Math.pow(Math.abs(tilt) - fTilt, 2));
-
+			var panDist:Number = Math.abs(pan - fPan);
+			if (panDist > 180) {
+				panDist = 360 - panDist;
+			}
+			
+			var fDistance:Number = Math.sqrt(Math.pow(panDist, 2) + Math.pow(Math.abs(tilt - fTilt), 2));
+			
 			if (fDistance == 0) {
 				if (brightness != _maxBrightness) {
 					setBrightness(_maxBrightness);					
@@ -173,13 +178,13 @@ package com.panozona.modules.lensflare{
 		
 		private function showFlares(pan:Number, tilt:Number, fDistance:Number):void
 		{		
-			for each(var flare:Object in _flares) {
-				var flarePan:Number = validatePanTilt(fPan + ((pan >= 0 ? pan : -pan) - fPan) * flare.pos) * (pan >= 0 ? 1 : -1);
-				var flareTilt:Number = validatePanTilt(fTilt + ((tilt >= 0 ? tilt : -tilt) - fTilt) * flare.pos) * ((tilt >= 0 ? 1 : -1));				
+			for each(var flare:Object in _flares) {			
+				var flarePan:Number = validatePanTilt(fPan + validatePanTilt(pan - fPan) * flare.pos);
+				var flareTilt:Number = validatePanTilt(fTilt + validatePanTilt(tilt - fTilt) * flare.pos);				
 				
 				flare.image.x = panToX(flarePan);
 				flare.image.y = tiltToY(flareTilt);
-				
+
 				if (fDistance <= 5) {
 					flare.image.alpha = 0;				
 				} else if (fDistance <= _maxFlaresDistance) {					
