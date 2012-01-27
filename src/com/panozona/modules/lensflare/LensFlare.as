@@ -67,7 +67,7 @@ package com.panozona.modules.lensflare{
 		 */
 		public function LensFlare():void {
 			
-			super("LensFlare", "0.2", "http://panozona.com/wiki/Module:LensFlare");
+			super("LensFlare", "0.2.1", "http://panozona.com/wiki/Module:LensFlare");
 		}
 		
 		override protected function moduleReady(moduleData:ModuleData):void {
