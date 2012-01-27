@@ -67,7 +67,7 @@ package com.panozona.modules.lensflare{
 		 */
 		public function LensFlare():void {
 			
-			super("LensFlare", "0.1", "http://panozona.com/wiki/Module:LensFlare");
+			super("LensFlare", "0.2", "http://panozona.com/wiki/Module:LensFlare");
 		}
 		
 		override protected function moduleReady(moduleData:ModuleData):void {
@@ -91,6 +91,8 @@ package com.panozona.modules.lensflare{
 				_flares[i] = { "path": flare.path, "pos": flare.pos, "image": flare.image };
 				i++;
 			}
+			
+			mouseEnabled = false;	
 			
 			saladoPlayer.manager.addEventListener(panoramaEventClass.PANORAMA_LOADED, onPanoramaLoaded, false, 0, true);
 		}
@@ -146,13 +148,12 @@ package com.panozona.modules.lensflare{
 			e.target.loader.x = - (e.target as LoaderInfo).width * 0.5;
 			e.target.loader.y = - (e.target as LoaderInfo).height * 0.5;
 			e.target.loader.parent.alpha = 0;
-			e.target.loader.mouseEnabled = false;
 			saladoPlayer.manager.addChild(e.target.loader.parent);
 		}		
 		
 		private function lensFlareEffect(pan:Number, tilt:Number):void {
 			
-			var fDistance:Number = Math.sqrt(Math.pow(pan - fPan, 2) + Math.pow(tilt - fTilt, 2));
+			var fDistance:Number = Math.sqrt(Math.pow(Math.abs(pan) - fPan, 2) + Math.pow(Math.abs(tilt) - fTilt, 2));
 
 			if (fDistance == 0) {
 				if (brightness != _maxBrightness) {
@@ -173,12 +174,12 @@ package com.panozona.modules.lensflare{
 		private function showFlares(pan:Number, tilt:Number, fDistance:Number):void
 		{		
 			for each(var flare:Object in _flares) {
-				var flarePan:Number = fPan + (pan - fPan) * flare.pos;
-				var flareTilt:Number = fTilt + (tilt - fTilt) * flare.pos;				
+				var flarePan:Number = validatePanTilt(fPan + ((pan >= 0 ? pan : -pan) - fPan) * flare.pos) * (pan >= 0 ? 1 : -1);
+				var flareTilt:Number = validatePanTilt(fTilt + ((tilt >= 0 ? tilt : -tilt) - fTilt) * flare.pos) * ((tilt >= 0 ? 1 : -1));				
 				
 				flare.image.x = panToX(flarePan);
 				flare.image.y = tiltToY(flareTilt);
-
+				
 				if (fDistance <= 5) {
 					flare.image.alpha = 0;				
 				} else if (fDistance <= _maxFlaresDistance) {					
@@ -188,7 +189,10 @@ package com.panozona.modules.lensflare{
 				} else {
 					flare.image.alpha = 0;
 				}
-				printInfo(flare.image.alpha.toFixed(2));
+				
+				//printInfo("fd=" + fDistance.toFixed(2) + "; a=" + flare.image.alpha.toFixed(2));
+				//printInfo("p=" + flarePan.toFixed(2) + "; t=" + flareTilt.toFixed(2) + ";");
+				//printInfo("x=" + flare.image.x.toFixed(0) + "; y=" + flare.image.y.toFixed(0) + ";");				
 			}
 		}
 		
@@ -213,6 +217,12 @@ package com.panozona.modules.lensflare{
 			saladoPlayer.manager.canvas.transform.colorTransform = colorTransform;
 			brightness = level;
 		}
+		
+		private function validatePanTilt(value:Number):Number {
+			if (value <= -180) value = (((value + 180) % 360) + 180);
+			if (value > 180) value = (((value + 180) % 360) - 180);
+			return value;
+		}		
 		
 		/*
 		 * Convert pan to x coordinate
