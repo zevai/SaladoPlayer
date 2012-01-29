@@ -51,7 +51,6 @@ package com.panozona.modules.lensflare{
 		/* 
 		 * Global settings
 		 */
-		protected var _maxFlaresDistance:Number;
 		protected var _maxBrightnessDistance:Number;
 		protected var _maxBrightness:Number;
 		
@@ -62,12 +61,17 @@ package com.panozona.modules.lensflare{
 		protected var _flares:Array = new Array();
 		protected var _flaresLoaded:Boolean = false;
 		
+		protected var _flaresAreShown:Boolean = false;	
+		protected var _fDistance:Number = 0;
+		protected var _maxFlaresDistance:Number = 20;
+		protected var _fadeDistance:int = 50;
+		
 		/*
 		 * Constructor
 		 */
 		public function LensFlare():void {
 			
-			super("LensFlare", "0.2.1", "http://panozona.com/wiki/Module:LensFlare");
+			super("LensFlare", "0.3", "http://panozona.com/wiki/Module:LensFlare");
 		}
 		
 		override protected function moduleReady(moduleData:ModuleData):void {
@@ -76,7 +80,6 @@ package com.panozona.modules.lensflare{
 			panoramaEventClass = ApplicationDomain.currentDomain.getDefinition("com.panozona.player.manager.events.PanoramaEvent") as Class;
 			
 			// save global settings
-			_maxFlaresDistance = lensFlareData.settings.maxFlaresDistance;
 			_maxBrightnessDistance = lensFlareData.settings.maxBrightnessDistance;
 			_maxBrightness = lensFlareData.settings.maxBrightness;
 			
@@ -118,7 +121,7 @@ package com.panozona.modules.lensflare{
 		
 		private function enterFrameHandler(event:Event):void {
 			if (_panos[saladoPlayer.manager.currentPanoramaData.id]) {
-				lensFlareEffect(saladoPlayer.manager._pan, saladoPlayer.manager._tilt);			
+				lensFlareEffect(saladoPlayer.manager._pan, saladoPlayer.manager._tilt);
 			}			
 		}
 		
@@ -153,19 +156,19 @@ package com.panozona.modules.lensflare{
 		
 		private function lensFlareEffect(pan:Number, tilt:Number):void {
 			
-			var panDist:Number = Math.abs(pan - fPan);
+			var panDist:Number = Math.abs(saladoPlayer.manager._pan - fPan);
 			if (panDist > 180) {
 				panDist = 360 - panDist;
 			}
 			
-			var fDistance:Number = Math.sqrt(Math.pow(panDist, 2) + Math.pow(Math.abs(tilt - fTilt), 2));
+			_fDistance = Math.sqrt(Math.pow(panDist, 2) + Math.pow(Math.abs(saladoPlayer.manager._tilt - fTilt), 2));
 			
-			if (fDistance == 0) {
+			if (_fDistance == 0) {
 				if (brightness != _maxBrightness) {
 					setBrightness(_maxBrightness);					
 				}				
-			} else if(fDistance <= _maxBrightnessDistance) {
-				setBrightness(_maxBrightness - Math.round(fDistance * _maxBrightness / _maxBrightnessDistance));
+			} else if(_fDistance <= _maxBrightnessDistance) {
+				setBrightness(_maxBrightness - Math.round(_fDistance * _maxBrightness / _maxBrightnessDistance));
 				
 			} else {
 				if (brightness != 0) {
@@ -173,31 +176,54 @@ package com.panozona.modules.lensflare{
 				}
 			}
 			
-			showFlares(pan, tilt, fDistance);			
+			showFlares();			
 		}
 		
-		private function showFlares(pan:Number, tilt:Number, fDistance:Number):void
+		private function showFlares():void
 		{		
-			for each(var flare:Object in _flares) {			
-				var flarePan:Number = validatePanTilt(fPan + validatePanTilt(pan - fPan) * flare.pos);
-				var flareTilt:Number = validatePanTilt(fTilt + validatePanTilt(tilt - fTilt) * flare.pos);				
+			var fx:int = panToX(fPan);
+			var fy:int = tiltToY(fTilt);
+			var w:int = saladoPlayer.manager.boundsWidth;
+			var h:int = saladoPlayer.manager.boundsHeight;
+			
+			//printInfo("fpan=" + fPan.toFixed() + "; ftilt=" + fTilt.toFixed());
+			//printInfo("fx=" + fx.toFixed() + "; fy=" + fy.toFixed() + "; w=" + w.toFixed() + "; h=" + h.toFixed());
+			
+			var fDistanceToBounds:int = Math.max(0, Math.round(Math.min(fx, fy, (w - fx), (h - fy))));
+			
+			if (fx <= w && fx > 0 && fy <= h && fy > 0) {				
 				
-				flare.image.x = panToX(flarePan);
-				flare.image.y = tiltToY(flareTilt);
-
-				if (fDistance <= 5) {
-					flare.image.alpha = 0;				
-				} else if (fDistance <= _maxFlaresDistance) {					
-					flare.image.alpha = fDistance / _maxFlaresDistance;					
-				} else if (fDistance <= _maxFlaresDistance * 1.3) {					
-					flare.image.alpha = 1 - ((fDistance - _maxFlaresDistance) / (_maxFlaresDistance * 1.3 - _maxFlaresDistance));					
-				} else {
-					flare.image.alpha = 0;
+				if (!_flaresAreShown) {
+					_flaresAreShown = true;
 				}
 				
-				//printInfo("fd=" + fDistance.toFixed(2) + "; a=" + flare.image.alpha.toFixed(2));
-				//printInfo("p=" + flarePan.toFixed(2) + "; t=" + flareTilt.toFixed(2) + ";");
-				//printInfo("x=" + flare.image.x.toFixed(0) + "; y=" + flare.image.y.toFixed(0) + ";");				
+				for each(var flare:Object in _flares) {			
+					var flarePan:Number = validatePanTilt(fPan + validatePanTilt(saladoPlayer.manager._pan - fPan) * flare.pos);
+					var flareTilt:Number = validatePanTilt(fTilt + validatePanTilt(saladoPlayer.manager._tilt - fTilt) * flare.pos);				
+					
+					flare.image.x = panToX(flarePan);
+					flare.image.y = tiltToY(flareTilt);
+					
+					if (fDistanceToBounds <= _fadeDistance) {
+						flare.image.alpha = fDistanceToBounds / _fadeDistance;
+					} else {
+						if (_fDistance <= _maxFlaresDistance) {					
+							flare.image.alpha = _fDistance / _maxFlaresDistance;					
+						} else {					
+							flare.image.alpha = 1;
+						}
+					}					
+				
+					//printInfo("fd=" + _fDistance.toFixed(2) + "; a=" + flare.image.alpha.toFixed(2));
+					//printInfo("p=" + flarePan.toFixed(2) + "; t=" + flareTilt.toFixed(2) + ";");
+					//printInfo("x=" + flare.image.x.toFixed(0) + "; y=" + flare.image.y.toFixed(0) + ";");				
+				}
+			} else {
+				
+				if (_flaresAreShown) {
+					hideFlares();
+					_flaresAreShown = false;
+				}							
 			}
 		}
 		
@@ -227,21 +253,44 @@ package com.panozona.modules.lensflare{
 			if (value <= -180) value = (((value + 180) % 360) + 180);
 			if (value > 180) value = (((value + 180) % 360) - 180);
 			return value;
-		}		
+		}
+		
+		/* 
+		 * Check if point (pan or tilt) is within an angle of view (fov or vfov)
+		 */
+		private function inAngleBounds(value:Number, from:Number, to:Number):Boolean
+		{
+			var result:Boolean = false;
+			if (from > 0 && to < 0) {
+				if ((value >= from && value <= 180) || (value >= -180 && value <= to)) {
+					result = true;
+				}
+			} else {
+				if (value >= from && value <= to) {
+					result = true; 
+				}
+			}
+			return result;
+		}
 		
 		/*
 		 * Convert pan to x coordinate
 		 */
-		private function panToX(pan:Number):int {
+		private function panToX(pan:Number):int {			
 			var w:Number = saladoPlayer.manager.boundsWidth;
 			var cPan:Number = saladoPlayer.manager._pan;
-			var fov:Number = saladoPlayer.manager.fieldOfView;
+			var fov:Number = saladoPlayer.manager._fieldOfView;
+			pan = validatePanTilt(pan);
 			
-			return Math.round(
-				w * 0.5 + 
-				(Math.tan((pan - cPan) * __toRadians) * w * 0.5) /
-				(Math.tan(fov * 0.5 * __toRadians))
-				);
+			if (inAngleBounds(pan, validatePanTilt(cPan - fov / 2), validatePanTilt(cPan + fov / 2))) {
+				return Math.round(
+					w * 0.5 + 
+					(Math.tan((pan - cPan) * __toRadians) * w * 0.5) /
+					(Math.tan(fov * 0.5 * __toRadians))
+					);				
+			} else {
+				return -99999;
+			}
 		}
 		
 		/*
@@ -251,15 +300,20 @@ package com.panozona.modules.lensflare{
 			var w:Number = saladoPlayer.manager.boundsWidth;
 			var h:Number = saladoPlayer.manager.boundsHeight;
 			var cTilt:Number = saladoPlayer.manager._tilt;
-			var fov:Number = saladoPlayer.manager.fieldOfView;
+			var fov:Number = saladoPlayer.manager._fieldOfView;
 			var vFov:Number = __toDegrees * 2 * Math.atan((h / w)
 				* Math.tan(__toRadians * 0.5 * fov));
+			tilt = validatePanTilt(tilt);
 			
-			return Math.round(
-				h * 0.5 + 
-				(Math.tan((cTilt - tilt) * __toRadians) * h * 0.5) /
-				(Math.tan(vFov * 0.5 * __toRadians))
-				);
+			if (inAngleBounds(tilt, validatePanTilt(cTilt - vFov / 2), validatePanTilt(cTilt + vFov / 2))) {
+				return Math.round(
+					h * 0.5 + 
+					(Math.tan((cTilt - tilt) * __toRadians) * h * 0.5) /
+					(Math.tan(vFov * 0.5 * __toRadians))
+					);
+			} else {
+				return -99999;
+			}
 		}		
 		
 		private var __toDegrees:Number = 180 / Math.PI;
