@@ -16,12 +16,16 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with SaladoPlayer. If not, see <http://www.gnu.org/licenses/>.
 */
-package com.panozona.modules.lensflare.model{
+package com.panozona.modules.lensflare.model {
 	
 	public class Settings {
 		
-		public var maxBrightnessDistance:Number = 20;
-		public var maxBrightness:Number = 150;
+		// path to flares png grid
+		public var path:String = null;
 		
+		// positions of each flare from the grid
+		public var positions:String = null;
+		
+		public var brightness:SettingsBrightness = new SettingsBrightness();		
 	}
 }

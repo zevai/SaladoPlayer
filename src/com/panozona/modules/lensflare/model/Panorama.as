@@ -16,13 +16,13 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with SaladoPlayer. If not, see <http://www.gnu.org/licenses/>.
 */
-package com.panozona.modules.lensflare.model {
+package com.panozona.modules.lensflare.model {	
+	
+	import com.panozona.player.module.data.property.Location;	
 	
 	public class Panorama {
 		
-		public var pan:Number = 0;		
-		public var tilt:Number = 0;
-		public var id:String = null;
-		
+		public var id:String = null;		
+		public var location:Location = new Location();		
 	}
 }

@@ -25,6 +25,7 @@ package com.panozona.modules.lensflare{
 	import flash.system.ApplicationDomain;
 	import flash.geom.Rectangle;
 	import flash.geom.ColorTransform;
+	import flash.geom.Point;
 	import flash.events.Event;
 	import flash.events.IOErrorEvent;
 	import flash.display.Loader;
@@ -47,19 +48,14 @@ package com.panozona.modules.lensflare{
 		 */
 		private var fPan:Number;
 		private var fTilt:Number;
-		
-		/* 
-		 * Global settings
-		 */
-		protected var _maxBrightnessDistance:Number;
-		protected var _maxBrightness:Number;
-		
+			
 		/* 
 		 * Panoramas and flares settings
 		 */
 		protected var _panos:Object = new Object();
 		protected var _flares:Array = new Array();
 		protected var _flaresLoaded:Boolean = false;
+		protected var _flareDefaultPosition:Number = 1;
 		
 		protected var _flaresAreShown:Boolean = false;	
 		protected var _fDistance:Number = 0;
@@ -71,7 +67,7 @@ package com.panozona.modules.lensflare{
 		 */
 		public function LensFlare():void {
 			
-			super("LensFlare", "0.3", "http://panozona.com/wiki/Module:LensFlare");
+			super("LensFlare", "0.4", "http://panozona.com/wiki/Module:LensFlare");
 		}
 		
 		override protected function moduleReady(moduleData:ModuleData):void {
@@ -79,20 +75,9 @@ package com.panozona.modules.lensflare{
 			lensFlareData = new LensFlareData(moduleData, saladoPlayer);			
 			panoramaEventClass = ApplicationDomain.currentDomain.getDefinition("com.panozona.player.manager.events.PanoramaEvent") as Class;
 			
-			// save global settings
-			_maxBrightnessDistance = lensFlareData.settings.maxBrightnessDistance;
-			_maxBrightness = lensFlareData.settings.maxBrightness;
-			
 			// save panoramas settings
 			for each (var panorama:Panorama in lensFlareData.panoramas.getChildrenOfGivenClass(Panorama)) {
-				_panos[panorama.id] = {"pan": panorama.pan, "tilt": panorama.tilt};
-			}
-			
-			// save flares images settings
-			var i:int = 0;
-			for each (var flare:Flare in lensFlareData.flares.getChildrenOfGivenClass(Flare)) {
-				_flares[i] = { "path": flare.path, "pos": flare.pos, "image": flare.image };
-				i++;
+				_panos[panorama.id] = {"pan": panorama.location.pan, "tilt": panorama.location.tilt};
 			}
 			
 			mouseEnabled = false;	
@@ -104,39 +89,23 @@ package com.panozona.modules.lensflare{
 			var currentPano:String = saladoPlayer.manager.currentPanoramaData.id;
 			if (_panos[currentPano]) {
 				if (!_flaresLoaded) {
-					loadImages();					
+					var loader:Loader = new Loader();				
+					loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imageLost);
+					loader.contentLoaderInfo.addEventListener(Event.COMPLETE, imageLoaded);				
+					loader.load(new URLRequest(lensFlareData.settings.path));					
 				}
 				fPan = _panos[currentPano].pan;
 				fTilt = _panos[currentPano].tilt;
-				stage.addEventListener(Event.ENTER_FRAME, enterFrameHandler, false, 0, true);
+				stage.addEventListener(Event.ENTER_FRAME, lensFlareEffect, false, 0, true);
 			} else {
 				if (stage.hasEventListener(Event.ENTER_FRAME)) {
-					stage.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+					stage.removeEventListener(Event.ENTER_FRAME, lensFlareEffect);
 				}
 				if (_flaresLoaded) {
 					hideFlares();
 				}
 			}
 		}		
-		
-		private function enterFrameHandler(event:Event):void {
-			if (_panos[saladoPlayer.manager.currentPanoramaData.id]) {
-				lensFlareEffect(saladoPlayer.manager._pan, saladoPlayer.manager._tilt);
-			}			
-		}
-		
-		private function loadImages():void {
-			
-			for (var key:int = 0; key < _flares.length; key++) {
-				var loader:Loader = new Loader();				
-				_flares[key].image.addChild(loader);
-				loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imageLost);
-				loader.contentLoaderInfo.addEventListener(Event.COMPLETE, imageLoaded);				
-				loader.load(new URLRequest(_flares[key].path));
-			}
-			
-			_flaresLoaded = true; //TODO: move to right place
-		}
 		
 		public function imageLost(e:IOErrorEvent):void {
 			(e.target as LoaderInfo).removeEventListener(IOErrorEvent.IO_ERROR, imageLost);
@@ -148,35 +117,66 @@ package com.panozona.modules.lensflare{
 			(e.target as LoaderInfo).removeEventListener(IOErrorEvent.IO_ERROR, imageLost);
 			(e.target as LoaderInfo).removeEventListener(Event.COMPLETE, imageLoaded);
 			
-			e.target.loader.x = - (e.target as LoaderInfo).width * 0.5;
-			e.target.loader.y = - (e.target as LoaderInfo).height * 0.5;
-			e.target.loader.parent.alpha = 0;
-			saladoPlayer.manager.addChild(e.target.loader.parent);
-		}		
-		
-		private function lensFlareEffect(pan:Number, tilt:Number):void {
-			
-			var panDist:Number = Math.abs(saladoPlayer.manager._pan - fPan);
-			if (panDist > 180) {
-				panDist = 360 - panDist;
-			}
-			
-			_fDistance = Math.sqrt(Math.pow(panDist, 2) + Math.pow(Math.abs(saladoPlayer.manager._tilt - fTilt), 2));
-			
-			if (_fDistance == 0) {
-				if (brightness != _maxBrightness) {
-					setBrightness(_maxBrightness);					
-				}				
-			} else if(_fDistance <= _maxBrightnessDistance) {
-				setBrightness(_maxBrightness - Math.round(_fDistance * _maxBrightness / _maxBrightnessDistance));
+			var cellsCount:int = Math.round(((e.target as LoaderInfo).width + 1) / ((e.target as LoaderInfo).height + 1));			
+			if (cellsCount == ((e.target as LoaderInfo).width + 1) / ((e.target as LoaderInfo).height + 1)) {
+
+				var bitmapData:BitmapData = new BitmapData((e.target as LoaderInfo).width, (e.target as LoaderInfo).height, true, 0);
+				bitmapData.draw((e.target as LoaderInfo).content);
+				
+				var positions:Array = lensFlareData.settings.positions.split("|");
+				var cellSide:int = (e.target as LoaderInfo).height;
+				
+				for (var i:int = 0; i < cellsCount; i++) {
+					_flares[i] = new Object;
+					_flares[i].position = (positions[i] == null) ? _flareDefaultPosition : positions[i];
+					_flares[i].image = new Sprite();
+					
+					var flareBmData:BitmapData = new BitmapData(cellSide, cellSide, true, 0);
+					flareBmData = new BitmapData(cellSide, cellSide, true, 0);
+					flareBmData.copyPixels(bitmapData, new Rectangle((cellSide * i + i), 0, cellSide, cellSide), new Point(0, 0), null, null, true);
+					
+					var flareBm:Bitmap = new Bitmap(flareBmData, "auto", true);
+					flareBm.x = -cellSide * 0.5;
+					flareBm.y = -cellSide * 0.5;
+					_flares[i].image.addChild(flareBm);
+					_flares[i].image.alpha = 0;
+					
+					saladoPlayer.manager.addChild(_flares[i].image);
+				}
+				
+				_flaresLoaded = true;
 				
 			} else {
-				if (brightness != 0) {
-					setBrightness(0);					
-				}
+				_flaresLoaded = false;
+				printError("Incorrect grid size");
 			}
-			
-			showFlares();			
+		}		
+		
+		private function lensFlareEffect(event:Event):void {			
+			if (_panos[saladoPlayer.manager.currentPanoramaData.id]) {
+				
+				var panDist:Number = Math.abs(saladoPlayer.manager._pan - fPan);
+				if (panDist > 180) {
+					panDist = 360 - panDist;
+				}
+				
+				_fDistance = Math.sqrt(Math.pow(panDist, 2) + Math.pow(Math.abs(saladoPlayer.manager._tilt - fTilt), 2));
+				
+				if (_fDistance == 0) {
+					if (brightness != lensFlareData.settings.brightness.level) {
+						setBrightness(lensFlareData.settings.brightness.level);					
+					}				
+				} else if(_fDistance <= lensFlareData.settings.brightness.distance) {
+					setBrightness(lensFlareData.settings.brightness.level - Math.round(_fDistance * lensFlareData.settings.brightness.level / lensFlareData.settings.brightness.distance));
+					
+				} else {
+					if (brightness != 0) {
+						setBrightness(0);					
+					}
+				}
+				
+				showFlares();				
+			}			
 		}
 		
 		private function showFlares():void
@@ -198,8 +198,8 @@ package com.panozona.modules.lensflare{
 				}
 				
 				for each(var flare:Object in _flares) {			
-					var flarePan:Number = validatePanTilt(fPan + validatePanTilt(saladoPlayer.manager._pan - fPan) * flare.pos);
-					var flareTilt:Number = validatePanTilt(fTilt + validatePanTilt(saladoPlayer.manager._tilt - fTilt) * flare.pos);				
+					var flarePan:Number = validatePanTilt(fPan + validatePanTilt(saladoPlayer.manager._pan - fPan) * flare.position);
+					var flareTilt:Number = validatePanTilt(fTilt + validatePanTilt(saladoPlayer.manager._tilt - fTilt) * flare.position);				
 					
 					flare.image.x = panToX(flarePan);
 					flare.image.y = tiltToY(flareTilt);
