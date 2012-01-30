@@ -44,13 +44,9 @@ package com.panozona.modules.lensflare.model{
 			
 			if (saladoPlayer.managerData.debugMode) {
 				if (settings.path == null || !settings.path.match(/^(.+)\.(png|gif|jpg|jpeg|swf)$/i)) {
-					throw new Error("Invalid image path: " + settings.path);
+					throw new Error("Invalid grid image path: " + settings.path);
 				}
-				
-				if (settings.positions == null) {
-					throw new Error("No positions found.");
-				}
-				
+
 				if (panoramas.getChildrenOfGivenClass(Panorama).length == 0) {
 					throw new Error("No panoramas found.");
 				}			
@@ -59,6 +55,10 @@ package com.panozona.modules.lensflare.model{
 					if ((!panorama.id)) {
 						throw new Error("Panorama id is not defined.");
 					}
+					
+					if (panorama.path && !panorama.path.match(/^(.+)\.(png|gif|jpg|jpeg|swf)$/i)) {
+						throw new Error("Invalid local grid image path: " + panorama.path);
+					}					
 				}				
 			}
 		}

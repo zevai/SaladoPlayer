@@ -18,11 +18,18 @@ along with SaladoPlayer. If not, see <http://www.gnu.org/licenses/>.
 */
 package com.panozona.modules.lensflare.model {	
 	
-	import com.panozona.player.module.data.property.Location;	
+	import com.panozona.player.module.data.property.Location;
 	
 	public class Panorama {
 		
 		public var id:String = null;		
-		public var location:Location = new Location();		
+		public var location:Location = new Location();
+		
+		// path to local flares png grid
+		public var path:String = null;
+
+		public var positions:String = null;
+		
+		public var brightness:SettingsBrightness = new SettingsBrightness( -1, -1);
 	}
 }

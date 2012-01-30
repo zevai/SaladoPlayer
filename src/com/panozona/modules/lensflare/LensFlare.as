@@ -48,6 +48,7 @@ package com.panozona.modules.lensflare{
 		 */
 		private var fPan:Number;
 		private var fTilt:Number;
+		private var curPositions:String;
 			
 		/* 
 		 * Panoramas and flares settings
@@ -56,6 +57,9 @@ package com.panozona.modules.lensflare{
 		protected var _flares:Array = new Array();
 		protected var _flaresLoaded:Boolean = false;
 		protected var _flareDefaultPosition:Number = 1;
+		
+		protected var _flaresLocal:Object = new Object();
+		protected var _flaresLocalLoaded:Array = new Array();
 		
 		protected var _flaresAreShown:Boolean = false;	
 		protected var _fDistance:Number = 0;
@@ -67,17 +71,17 @@ package com.panozona.modules.lensflare{
 		 */
 		public function LensFlare():void {
 			
-			super("LensFlare", "0.4", "http://panozona.com/wiki/Module:LensFlare");
+			super("LensFlare", "1.0", "http://panozona.com/wiki/Module:LensFlare");
 		}
 		
-		override protected function moduleReady(moduleData:ModuleData):void {
-			
+		override protected function moduleReady(moduleData:ModuleData):void {			
 			lensFlareData = new LensFlareData(moduleData, saladoPlayer);			
 			panoramaEventClass = ApplicationDomain.currentDomain.getDefinition("com.panozona.player.manager.events.PanoramaEvent") as Class;
 			
 			// save panoramas settings
-			for each (var panorama:Panorama in lensFlareData.panoramas.getChildrenOfGivenClass(Panorama)) {
-				_panos[panorama.id] = {"pan": panorama.location.pan, "tilt": panorama.location.tilt};
+			for each (var panorama:Panorama in lensFlareData.panoramas.getChildrenOfGivenClass(Panorama)) {				
+				_panos[panorama.id] = panorama;
+				_flaresLocalLoaded[panorama.id] = false;
 			}
 			
 			mouseEnabled = false;	
@@ -88,22 +92,36 @@ package com.panozona.modules.lensflare{
 		private function onPanoramaLoaded(e:Event):void {
 			var currentPano:String = saladoPlayer.manager.currentPanoramaData.id;
 			if (_panos[currentPano]) {
-				if (!_flaresLoaded) {
-					var loader:Loader = new Loader();				
-					loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imageLost);
-					loader.contentLoaderInfo.addEventListener(Event.COMPLETE, imageLoaded);				
-					loader.load(new URLRequest(lensFlareData.settings.path));					
+				hideFlares();
+				var loader:Loader;				
+				if (_panos[currentPano].path) {
+					if (!_flaresLocalLoaded[currentPano]) {
+						_flaresLocal[currentPano] = new Array();
+						loader = new Loader(); 
+						loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imageLost);
+						loader.contentLoaderInfo.addEventListener(Event.COMPLETE, imageLoaded);				
+						loader.load(new URLRequest(_panos[currentPano].path));						
+					} else {
+						setPositions();
+					}
+				} else {
+					if (!_flaresLoaded) {
+						loader = new Loader();
+						loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imageLost);
+						loader.contentLoaderInfo.addEventListener(Event.COMPLETE, imageLoaded);				
+						loader.load(new URLRequest(lensFlareData.settings.path));					
+					} else {
+						setPositions();
+					}					
 				}
-				fPan = _panos[currentPano].pan;
-				fTilt = _panos[currentPano].tilt;
+				fPan = _panos[currentPano].location.pan;
+				fTilt = _panos[currentPano].location.tilt;
 				stage.addEventListener(Event.ENTER_FRAME, lensFlareEffect, false, 0, true);
 			} else {
 				if (stage.hasEventListener(Event.ENTER_FRAME)) {
 					stage.removeEventListener(Event.ENTER_FRAME, lensFlareEffect);
 				}
-				if (_flaresLoaded) {
-					hideFlares();
-				}
+				hideFlares();
 			}
 		}		
 		
@@ -117,19 +135,19 @@ package com.panozona.modules.lensflare{
 			(e.target as LoaderInfo).removeEventListener(IOErrorEvent.IO_ERROR, imageLost);
 			(e.target as LoaderInfo).removeEventListener(Event.COMPLETE, imageLoaded);
 			
+			var currentPano:String = saladoPlayer.manager.currentPanoramaData.id;
+			
 			var cellsCount:int = Math.round(((e.target as LoaderInfo).width + 1) / ((e.target as LoaderInfo).height + 1));			
 			if (cellsCount == ((e.target as LoaderInfo).width + 1) / ((e.target as LoaderInfo).height + 1)) {
 
 				var bitmapData:BitmapData = new BitmapData((e.target as LoaderInfo).width, (e.target as LoaderInfo).height, true, 0);
-				bitmapData.draw((e.target as LoaderInfo).content);
+				bitmapData.draw((e.target as LoaderInfo).content);		
 				
-				var positions:Array = lensFlareData.settings.positions.split("|");
 				var cellSide:int = (e.target as LoaderInfo).height;
 				
 				for (var i:int = 0; i < cellsCount; i++) {
-					_flares[i] = new Object;
-					_flares[i].position = (positions[i] == null) ? _flareDefaultPosition : positions[i];
-					_flares[i].image = new Sprite();
+					var flare:Object = new Object();
+					flare.image = new Sprite();
 					
 					var flareBmData:BitmapData = new BitmapData(cellSide, cellSide, true, 0);
 					flareBmData = new BitmapData(cellSide, cellSide, true, 0);
@@ -138,19 +156,64 @@ package com.panozona.modules.lensflare{
 					var flareBm:Bitmap = new Bitmap(flareBmData, "auto", true);
 					flareBm.x = -cellSide * 0.5;
 					flareBm.y = -cellSide * 0.5;
-					_flares[i].image.addChild(flareBm);
-					_flares[i].image.alpha = 0;
+					flare.image.addChild(flareBm);
+					flare.image.alpha = 0;
 					
-					saladoPlayer.manager.addChild(_flares[i].image);
+					if (_panos[currentPano].path) {
+						_flaresLocal[currentPano][i] = flare;
+						saladoPlayer.manager.addChild(_flaresLocal[currentPano][i].image);
+					} else {
+						_flares[i] = flare;
+						saladoPlayer.manager.addChild(_flares[i].image);
+					}
 				}
 				
-				_flaresLoaded = true;
+				setPositions();
+				
+				if (_panos[currentPano].path) {
+					_flaresLocalLoaded[currentPano] = true;
+				} else {
+					_flaresLoaded = true;
+				}
 				
 			} else {
-				_flaresLoaded = false;
+				if (_panos[currentPano].path) {
+					_flaresLocalLoaded[currentPano] = false;
+				} else {
+					_flaresLoaded = false;
+				}
 				printError("Incorrect grid size");
 			}
-		}		
+		}
+		
+		private function setPositions():void {
+			var currentPano:String = saladoPlayer.manager.currentPanoramaData.id;
+			var positions:Array = new Array();
+			
+			curPositions = _panos[currentPano].positions ? 
+				_panos[currentPano].positions : lensFlareData.settings.positions;
+			var cellsCount:int = _panos[currentPano].path ? 
+				_flaresLocal[currentPano].length : _flares.length;
+			
+			if (curPositions == null) {
+				// automatically set positions
+				var minPos:Number = 0.5;
+				var maxPos:Number = 2.5;
+				for (var i:int = 0; i < cellsCount; i++) {
+					positions[i] = minPos + (maxPos - minPos) / cellsCount * i;
+				}
+			} else {
+				positions = curPositions.split("|");
+			}
+			
+			for (i = 0; i < cellsCount; i++) {					
+				if (_panos[currentPano].path) {
+					_flaresLocal[currentPano][i].position = (positions[i] == null) ? _flareDefaultPosition : positions[i];
+				} else {
+					_flares[i].position = (positions[i] == null) ? _flareDefaultPosition : positions[i];
+				}
+			}			
+		}
 		
 		private function lensFlareEffect(event:Event):void {			
 			if (_panos[saladoPlayer.manager.currentPanoramaData.id]) {
@@ -162,12 +225,18 @@ package com.panozona.modules.lensflare{
 				
 				_fDistance = Math.sqrt(Math.pow(panDist, 2) + Math.pow(Math.abs(saladoPlayer.manager._tilt - fTilt), 2));
 				
+				var level:Number = _panos[saladoPlayer.manager.currentPanoramaData.id].brightness.level == -1 ?
+					lensFlareData.settings.brightness.level : _panos[saladoPlayer.manager.currentPanoramaData.id].brightness.level;	
+					
+				var distance:Number = _panos[saladoPlayer.manager.currentPanoramaData.id].brightness.distance == -1 ?
+					lensFlareData.settings.brightness.distance : _panos[saladoPlayer.manager.currentPanoramaData.id].brightness.distance;
+				
 				if (_fDistance == 0) {
-					if (brightness != lensFlareData.settings.brightness.level) {
-						setBrightness(lensFlareData.settings.brightness.level);					
+					if (brightness != level) {
+						setBrightness(level);					
 					}				
-				} else if(_fDistance <= lensFlareData.settings.brightness.distance) {
-					setBrightness(lensFlareData.settings.brightness.level - Math.round(_fDistance * lensFlareData.settings.brightness.level / lensFlareData.settings.brightness.distance));
+				} else if(_fDistance <= distance) {
+					setBrightness(level - Math.round(_fDistance * level / distance));
 					
 				} else {
 					if (brightness != 0) {
@@ -180,7 +249,9 @@ package com.panozona.modules.lensflare{
 		}
 		
 		private function showFlares():void
-		{		
+		{	
+			var currentPano:String = saladoPlayer.manager.currentPanoramaData.id;
+			
 			var fx:int = panToX(fPan);
 			var fy:int = tiltToY(fTilt);
 			var w:int = saladoPlayer.manager.boundsWidth;
@@ -197,7 +268,9 @@ package com.panozona.modules.lensflare{
 					_flaresAreShown = true;
 				}
 				
-				for each(var flare:Object in _flares) {			
+				var flares:Array = _panos[currentPano].path ? _flaresLocal[currentPano] : _flares;
+				
+				for each(var flare:Object in flares) {			
 					var flarePan:Number = validatePanTilt(fPan + validatePanTilt(saladoPlayer.manager._pan - fPan) * flare.position);
 					var flareTilt:Number = validatePanTilt(fTilt + validatePanTilt(saladoPlayer.manager._tilt - fTilt) * flare.position);				
 					
@@ -231,6 +304,13 @@ package com.panozona.modules.lensflare{
 		{
 			for each(var flare:Object in _flares) {
 				flare.image.alpha = 0;
+			}
+			for each(var pano:Panorama in _panos) {
+				if (pano.path) {
+					for each (flare in _flaresLocal[pano.id]) {
+						flare.image.alpha = 0;
+					}
+				}
 			}			
 		}
 			

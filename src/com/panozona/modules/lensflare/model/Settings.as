@@ -26,6 +26,6 @@ package com.panozona.modules.lensflare.model {
 		// positions of each flare from the grid
 		public var positions:String = null;
 		
-		public var brightness:SettingsBrightness = new SettingsBrightness();		
+		public var brightness:SettingsBrightness = new SettingsBrightness(150, 20);		
 	}
 }

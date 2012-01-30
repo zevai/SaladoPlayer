@@ -19,9 +19,14 @@ along with SaladoPlayer. If not, see <http://www.gnu.org/licenses/>.
 package com.panozona.modules.lensflare.model{
 	
 	public class SettingsBrightness {
+		
+		public function SettingsBrightness(defaultLevel:Number, defaultDistance:Number) {
+			level = defaultLevel;
+			distance = defaultDistance;
+		}
 			
-		public var distance:Number = 20;
-		public var level:Number = 150;
+		public var distance:Number;
+		public var level:Number;
 		
 	}
 }
